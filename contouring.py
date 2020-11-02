@@ -12,7 +12,11 @@ def distance(x1, y1, x2, y2):
 
 finder = Finder.FeatureFinder()
 videocap = VideoCapture.MyVideoCapture()
-center = cv2.imread("eye1.jpg")
+ret, frame = videocap.getframe()
+self.find_face()
+self.find_eyes()
+
+center = cv2.imread("eye.jpg")
 bl = cv2.imread("bottom_left_eye.jpg")
 bm = cv2.imread("bottom_middle_eye.jpg")
 lower_white = np.array([100, 60, 90])
@@ -20,7 +24,7 @@ upper_white = np.array([255, 255, 255])
 img = center
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 blur = cv2.GaussianBlur(gray, (7,7), 0)
-_, threshold = cv2.threshold(blur, 23,255, cv2.THRESH_BINARY_INV)
+_, threshold = cv2.threshold(blur, 232,255, cv2.THRESH_BINARY_INV)
 
 
 contours, heirarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)

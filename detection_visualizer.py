@@ -40,7 +40,9 @@ class App:
              self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(self.finder.get_image()))
 
              self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
-
+         if(self.finder.threshold != []):
+             cv2.imshow('image', self.finder.threshold)
+             cv2.waitKey(10)
          self.window.after(self.delay, self.update)
 
 

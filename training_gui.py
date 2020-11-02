@@ -28,7 +28,7 @@ class TrainingApp:
         self.detection = False
         self.col_scale = (self.screen_width - (self.circle_radius * 2))/self.cols
         self.row_scale = (self.screen_height - (self.circle_radius * 2))/self.rows
-        self.canvas = Canvas(self.root, width = self.screen_width, height=self.screen_height, bg="white")
+        self.canvas = Canvas(self.root, width = self.screen_width, height=self.screen_height, bg="black")
         self.canvas.bind("<Button-1>", self.mouse_pressed)
         self.canvas.pack()
         self.init_circles()
@@ -47,23 +47,24 @@ class TrainingApp:
         ind = row * (self.cols+1) + col
         return ind
 
-    #center x, center y, left eye x, left eye y, width scaling, height scaling, img 2500 elements (50x50)
+    #center x, center y, left eye x, left eye y, right eye x, right eye y
     def append_training(self, ind):
         (center_x, center_y, color) = self.circles[ind]
-        (x, y, w, h) = self.left_eye_coords
-        w_scaling = self.img_width/w
-        h_scaling = self.img_height/h
-        img = self.left_eye_img
-        cv2.imwrite("normal_eye.jpg",img)
-        img = cv2.resize(img, (self.img_width, self.img_height), interpolation = cv2.INTER_AREA)
-        img = np.reshape(img, self.img_width * self.img_height)
-        row = [center_x, center_y, x, y, w_scaling, h_scaling] + img.tolist()
+        (xl, yl) = self.left_eye_coords
+        (xr, yr) = self.right_eye_coords
+        x = (xl+xr)/2 
+        y = (yl+yr)/2
+        print("x ", x)
+        print("y ", y)
+        print("centerx ", center_x)
+        print("centery ", center_y)
+        row = [center_x, center_y,x, y]
         with open(self.file_name, 'a+', newline='') as write_obj:
             csv_writer = writer(write_obj)
             csv_writer.writerow(row)
 
     def mouse_pressed(self,event):
-        if(self.detection):
+        if(self.detection and self.finder.eyes_found):
             ind = self.find_nearest_circle(event.x, event.y)
             self.circles[ind][self.color_ind] = self.clicked
             self.append_training(ind)
@@ -76,19 +77,24 @@ class TrainingApp:
                 self.circles.append([center_x, center_y, self.no_detection])
 
     def update(self):
+        self.detection = False
         ret, frame = self.vid.get_frame()
         color = self.no_detection
         if ret:
             self.finder.set_image(frame)
             self.finder.find_face()
             self.finder.find_eyes()
-            left_eye_info = self.finder.get_left_eye()
-            self.detection = False
-            if(len(left_eye_info) != 0):
+            if(self.finder.eyes_found):
+                print("Good")
+                [self.left_eye_coords, self.right_eye_coords] = self.finder.get_eye_locations()
                 color = self.eye_detected
+                (xl, yl) = self.left_eye_coords
+                (xr, yr) = self.right_eye_coords
+                x = (xl+xr)/2
+                y = (yl+yr)/2
+                print("x: ",x)
+                print("y: ",y)
                 self.detection = True
-                self.left_eye_coords = left_eye_info[0]
-                self.left_eye_img = left_eye_info[1]
 
         for circle in self.circles:
             if(circle[self.color_ind] != self.clicked):

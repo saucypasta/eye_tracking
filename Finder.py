@@ -5,7 +5,7 @@ def distance(x1, y1, x2, y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 class FeatureFinder:
-    def __init__(self, image = []):
+    def __init__(self, image = [], thresh_val = 30):
         self.face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
         self.eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
         self.image = image
@@ -14,9 +14,13 @@ class FeatureFinder:
         self.roi = None
         self.left_center = []
         self.right_center = []
+        self.prev_left_center = []
+        self.prev_right_center = []
         self.eyes = []
         self.eyes_found = False
         self.radius = 24
+        self.threshold=[]
+        self.thresh_val = thresh_val
         self.find_face()
         self.find_eyes()
 
@@ -38,8 +42,8 @@ class FeatureFinder:
         (x, y, w, h) = eye
         img = self.roi[y:y+h, x:x+w]
         blur = cv2.GaussianBlur(img, (7,7), 0)
-        _, threshold = cv2.threshold(blur, 23,255, cv2.THRESH_BINARY_INV)
-        contours, heirarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, self.threshold = cv2.threshold(blur, self.thresh_val,255, cv2.THRESH_BINARY_INV)
+        contours, heirarchy = cv2.findContours(self.threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         (rows, cols) = blur.shape
         centerx = cols/2
         centery = rows/2
@@ -87,22 +91,17 @@ class FeatureFinder:
             self.right_center = self.eye_center(right_eye)
             if(self.right_center == []):
                 return
+            if(self.prev_left_center == [] and self.prev_right_center == []):
+                self.prev_left_center = self.left_center
+                self.prev_right_center = self.right_center
             self.eyes = [left_eye, right_eye]
             self.eyes_found = True
 
 
-
-
-    def get_left_eye(self):
-        if(len(self.eyes) == 2):
-            (x1, y1, w1, h1) = self.eyes[0]
-            (x2, y2, w2, h2) = self.eyes[1]
-            left_eye = self.eyes[0]
-            if x2 < x1:
-                left_eye = self.eyes[1]
-            (x, y, w, h) = left_eye
-            img = self.roi[y:y+x, x:x+w]
-            return [left_eye, img]
+    def get_eye_locations(self):
+        if(self.eyes_found):
+            return [self.left_center, self.right_center]
+        print("no eyes")
         return []
 
 
