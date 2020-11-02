@@ -3,6 +3,7 @@ import VideoCapture
 import Finder
 from csv import writer
 import numpy as np
+import cv2
 
 class TrainingApp:
     def __init__(self, root, cols = 6, rows = 4, radius = 50, video_source = 0, img_width = 50, img_height = 50, file_name = "training_data.csv"):
@@ -53,14 +54,13 @@ class TrainingApp:
         w_scaling = self.img_width/w
         h_scaling = self.img_height/h
         img = self.left_eye_img
-        img = np.resize(self.left_eye_img, (self.img_width, self.img_height))
+        cv2.imwrite("normal_eye.jpg",img)
+        img = cv2.resize(img, (self.img_width, self.img_height), interpolation = cv2.INTER_AREA)
         img = np.reshape(img, self.img_width * self.img_height)
         row = [center_x, center_y, x, y, w_scaling, h_scaling] + img.tolist()
         with open(self.file_name, 'a+', newline='') as write_obj:
             csv_writer = writer(write_obj)
             csv_writer.writerow(row)
-            print("wrote row")
-        print("appened row")
 
     def mouse_pressed(self,event):
         if(self.detection):
