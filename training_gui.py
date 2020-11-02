@@ -17,7 +17,6 @@ class TrainingApp:
         self.finder = Finder.FeatureFinder()
         self.left_eye = []
         self.file_name = file_name
-        self.data = []
         self.screen_width = self.root.winfo_screenwidth()
         self.screen_height = self.root.winfo_screenheight()
         self.circles = []
@@ -30,7 +29,6 @@ class TrainingApp:
         self.row_scale = (self.screen_height - (self.circle_radius * 2))/self.rows
         self.canvas = Canvas(self.root, width = self.screen_width, height=self.screen_height, bg="white")
         self.canvas.bind("<Button-1>", self.mouse_pressed)
-        self.root.bind("<space>", self.write_csv())
         self.canvas.pack()
         self.init_circles()
         self.delay = 15
@@ -58,15 +56,11 @@ class TrainingApp:
         img = np.resize(self.left_eye_img, (self.img_width, self.img_height))
         img = np.reshape(img, self.img_width * self.img_height)
         row = [center_x, center_y, x, y, w_scaling, h_scaling] + img.tolist()
-        self.data.append(row)
-
-    def write_csv(self):
-        print("space pressed")
         with open(self.file_name, 'a+', newline='') as write_obj:
             csv_writer = writer(write_obj)
-            for row in self.data:
-                print(row)
-                csv_writer.writerow(row)
+            csv_writer.writerow(row)
+            print("wrote row")
+        print("appened row")
 
     def mouse_pressed(self,event):
         if(self.detection):
