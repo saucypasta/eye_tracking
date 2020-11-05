@@ -16,7 +16,7 @@ class MyVideoCapture:
             ret, frame = self.vid.read()
             if ret:
                  # Return a boolean success flag and the current frame converted to BGR
-                 return (ret, cv2.flip(cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY), 1))
+                 return (ret, cv2.flip(frame, 1))
             else:
                  return (ret, None)
         else:

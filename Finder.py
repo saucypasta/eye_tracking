@@ -20,6 +20,7 @@ class FeatureFinder:
         self.eyes_found = False
         self.radius = 24
         self.threshold=[]
+        self.eye_img = []
         self.thresh_val = thresh_val
         self.find_face()
         self.find_eyes()
@@ -38,12 +39,15 @@ class FeatureFinder:
         if(len(faces) != 0):
             self.face = faces[0]
 
-    def eye_center(self,eye):
+    def eye_center(self,eye, thresh_save):
         (x, y, w, h) = eye
         img = self.roi[y:y+h, x:x+w]
         blur = cv2.GaussianBlur(img, (7,7), 0)
-        _, self.threshold = cv2.threshold(blur, self.thresh_val,255, cv2.THRESH_BINARY_INV)
-        contours, heirarchy = cv2.findContours(self.threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, threshold = cv2.threshold(blur, self.thresh_val,255, cv2.THRESH_BINARY_INV)
+        if(thresh_save):
+            self.threshold = threshold
+            self.eye_img = img
+        contours, heirarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         (rows, cols) = blur.shape
         centerx = cols/2
         centery = rows/2
@@ -71,7 +75,6 @@ class FeatureFinder:
         return [center[0] + x, center[1] + y]
 
     def find_eyes(self):
-        self.eyes_found = False
         if len(self.face) == 0:
             return
         (x, y, w, h) = self.face
@@ -85,15 +88,12 @@ class FeatureFinder:
             if x2 < x1:
                 left_eye = eyes[1]
                 right_eye = eyes[0]
-            self.left_center = self.eye_center(left_eye)
+            self.left_center = self.eye_center(left_eye,True)
             if(self.left_center == []):
                 return
-            self.right_center = self.eye_center(right_eye)
+            self.right_center = self.eye_center(right_eye,False)
             if(self.right_center == []):
                 return
-            if(self.prev_left_center == [] and self.prev_right_center == []):
-                self.prev_left_center = self.left_center
-                self.prev_right_center = self.right_center
             self.eyes = [left_eye, right_eye]
             self.eyes_found = True
 
