@@ -23,7 +23,8 @@ class SEQ:
                     for i in row:
                         tmp.append(float(i))
                     row = tmp
-                    x = np.array(row[2:])
+                    a = row[2:6] + row[-4:]
+                    x = np.array(a)
                     self.x_train.append(x)
                     y = np.array([row[0], row[1]])
                     self.y_train.append(y)
@@ -32,7 +33,7 @@ class SEQ:
 
     def init_model(self):
         model = Sequential()
-        model.add(Dense(256,input_dim=2,activation='relu'))
+        model.add(Dense(256,input_dim=8,activation='relu'))
         model.add(Dense(256,activation='relu'))
         model.add(Dense(256,activation='relu'))
         model.add(Dense(2,activation='linear'))
@@ -46,7 +47,7 @@ class SEQ:
         self.model.save_weights(self.weights)
 
     def train_model(self):
-        self.model.fit(self.x_train, self.y_train, epochs=100)
+        self.model.fit(self.x_train, self.y_train, epochs=1000)
 
     def predict(self, x):
         p = self.model.predict(x)
