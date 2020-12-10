@@ -3,7 +3,9 @@ import cv2
 class MyVideoCapture:
     def __init__(self, video_source=0):
          # Open the video source
-        self.vid = cv2.VideoCapture(video_source)
+        self.vid = cv2.VideoCapture(video_source,cv2.CAP_DSHOW)
+        self.vid.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         if not self.vid.isOpened():
             raise ValueError("Unable to open video source", video_source)
 

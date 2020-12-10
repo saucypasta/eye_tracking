@@ -54,6 +54,7 @@ class EyeTracker:
         self.face_points = []
         self.data = []
         self.good_data = False
+        self.bad_count = 0
 
     def get_image(self, img):
         return self.img
@@ -107,6 +108,7 @@ class EyeTracker:
         pass
 
     def mainloop(self):
+        self.good_data = False
         ret, frame = self.vid.get_frame()
         self.img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # cv2.createTrackbar('threshold', 'image', 50, 255, self.nothing)
@@ -203,21 +205,23 @@ class EyeTracker:
                 if(len(contours) != 6 and found):
                     break
 
-            if(len(good_contours) != 6):
-                print("No 6 whites")
-                cv2.imwrite("white.jpg",blur)
+            if(len(good_contours) == 6):
+                self.bad_count = 0
+            if(len(good_contours) != 6 and self.bad_count < 5):
+                self.bad_count = self.bad_count + 1
                 return []
-            order = []
-            for cnt in good_contours:
-                M = cv2.moments(cnt)
-                cx = int(M["m10"] / M["m00"])
-                print(len((cx,cnt)))
-                order.append((cx,cnt))
-            order.sort()
-            lp = order[1][1]
-            rp = order[4][1]
-            cv2.fillPoly(pupil, [lp], (10, 10, 10))
-            cv2.fillPoly(pupil, [rp], (10, 10, 10))
+
+            if self.bad_count == 0:
+                order = []
+                for cnt in good_contours:
+                    M = cv2.moments(cnt)
+                    cx = int(M["m10"] / M["m00"])
+                    order.append([cx,[cnt]])
+                order.sort(key=lambda x: x[0])
+                lp = order[1][1][0]
+                rp = order[4][1][0]
+                cv2.fillPoly(pupil, [lp], (10, 10, 10))
+                cv2.fillPoly(pupil, [rp], (10, 10, 10))
 
             blur = cv2.GaussianBlur(pupil, (7,7), 0)
             _, threshold = cv2.threshold(blur, self.pupil_thresh, 255, cv2.THRESH_BINARY)
@@ -229,12 +233,11 @@ class EyeTracker:
                 hull = cv2.convexHull(cnt)
                 area = cv2.contourArea(cnt)
                 areas.append(area)
-                if(area > 500 or area < 10):
-                    # cv2.drawContours(frame, [hull], -1, (255,0,255), 1)
+                if(area > 500 or area < 15):
                     # cv2.imshow('image',frame)
                     continue
                 cv2.drawContours(frame, [hull], -1, (0,0,255), 1)
-                M = cv2.moments(cnt)
+                M = cv2.moments(hull)
                 if M["m00"] == 0:
                     break
                 cX = int(M["m10"] / M["m00"])
@@ -243,8 +246,7 @@ class EyeTracker:
                 eyes.append(cnt)
 
             if len(centers) != 2:
-                self.good_data = False
-                print("Bad center")
+                print("Bad center areas: ",areas)
                 cv2.imwrite("bad.jpg",pupil)
                 return []
             # first center is right eye (leftmost eye in image)
@@ -299,10 +301,11 @@ class EyeTracker:
             # self.dists = [rmin_left_dist, rmin_right_dist, lmin_right_dist, lmin_left_dist]
             ######################################################
             self.centers = centers
-
+            # cv2.circle(frame, tuple(centers[0]), 1, (0, 0, 255), -1)
+            # cv2.circle(frame, tuple(centers[1]), 1, (0, 0, 255), -1)
             self.data = [self.centers, self.face_points]
             self.good_data = True
-            return frame
+            return [frame,self.data]
             # cv2.imshow("image", frame)
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
@@ -322,7 +325,7 @@ while True:
     # start_time = time.time()
     f = et.mainloop()
     if(len(f) != 0):
-        cv2.imshow('image', f)
+        cv2.imshow('image', f[0])
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
     # print("--- %s seconds ---" % (time.time() - start_time))

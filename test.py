@@ -89,7 +89,7 @@ def main():
     cv2.createTrackbar('threshold', 't', 0, 255, nothing)
     # # vid = VideoCapture.MyVideoCapture(0)
     # # finder = Finder.FeatureFinder()
-    i2 = cv2.imread("white.jpg")
+    i2 = cv2.imread("weye.jpg")
     # cv2.fillPoly(i2, [lp], (10, 10, 10))
     # cv2.fillPoly(i2, [rp], (10, 10, 10))
     gray = cv2.cvtColor(i2,cv2.COLOR_BGR2GRAY)

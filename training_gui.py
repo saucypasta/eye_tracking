@@ -5,17 +5,18 @@ import numpy as np
 import cv2
 import EyeTracking
 
+
 class TrainingApp:
-    def __init__(self, root, cols = 6, rows = 4, radius = 50, video_source = 0, img_width = 50, img_height = 50, file_name = "training_data.csv"):
+    def __init__(self, root, cols = 6, rows = 4, radius = 50, video_source = 0, file_name = "training_data.csv"):
         self.root = root
         self.cols = cols
         self.rows = rows
         self.circle_radius = radius
         self.video_source = video_source
-        self.img_width = img_width
-        self.img_height = img_height
         self.vid = VideoCapture.MyVideoCapture(self.video_source)
         self.eye_tracker = EyeTracking.EyeTracker(self.vid)
+        cv2.namedWindow('image')
+        cv2.createTrackbar('threshold', 'image', 42, 255, self.set_thresh)
         self.left_eye = []
         self.file_name = file_name
         self.screen_width = self.root.winfo_screenwidth()
@@ -28,14 +29,16 @@ class TrainingApp:
         self.data = []
         self.col_scale = (self.screen_width - (self.circle_radius * 2))/self.cols
         self.row_scale = (self.screen_height - (self.circle_radius * 2))/self.rows
-        self.canvas = Canvas(self.root, width = self.screen_width, height=self.screen_height, bg="black")
+        self.canvas = Canvas(self.root, width = self.screen_width, height=self.screen_height, bg="white")
         self.canvas.bind("<Button-1>", self.mouse_pressed)
         self.canvas.pack()
         self.init_circles()
-        self.delay = 15
-        self.eye_update()
+        self.delay = 0
         self.update()
         self.root.mainloop()
+
+    def set_thresh(self,val):
+        pass
 
     def draw_circle(self, circle):
         (center_x, center_y, color) = circle
@@ -49,28 +52,26 @@ class TrainingApp:
         return ind
 
     #center x, center y, left eye x, left eye y, right eye x, right eye y
-    def append_training(self, ind):
+    def append_training(self, ind, data):
         (center_x, center_y, color) = self.circles[ind]
         row = [center_x, center_y]
-        [centers, face_points, dists] = self.data
+        [centers, face_points] = data
         for (x,y) in centers:
             row.append(x)
             row.append(y)
         for (x,y) in face_points:
             row.append(x)
             row.append(y)
-        for dist in dists:
-            row.append(dist)
         with open(self.file_name, 'a+', newline='') as write_obj:
             csv_writer = writer(write_obj)
             csv_writer.writerow(row)
 
     def mouse_pressed(self,event):
-        self.data = self.eye_tracker.get_data()
-        if(self.data != []):
+        data = self.data
+        if(data != []):
             ind = self.find_nearest_circle(event.x, event.y)
             self.circles[ind][self.color_ind] = self.clicked
-            self.append_training(ind)
+            self.append_training(ind, data[1])
 
     def init_circles(self):
         for i in range(0, self.rows+1):
@@ -79,24 +80,32 @@ class TrainingApp:
                 center_y = i*self.row_scale + self.circle_radius
                 self.circles.append([center_x, center_y, self.no_detection])
 
-    def eye_update(self):
-        self.eye_tracker.mainloop()
-        self.root.after(1,self.eye_update())
+    # def eye_update(self):
+    #     self.data = self.eye_tracker.mainloop()
+    #     self.root.after(1,self.eye_update())
 
     def update(self):
-        self.data = self.eye_tracker.get_data()
+        thresh_val = cv2.getTrackbarPos('threshold', 'image')
+        self.eye_tracker.pupil_thresh = thresh_val
+        self.data = self.eye_tracker.mainloop()
         color = self.no_detection
         if(self.data != []):
             color = self.eye_detected
             self.detection = True
+            cv2.imshow('image', self.data[0])
 
         for circle in self.circles:
             if(circle[self.color_ind] != self.clicked):
                 circle[self.color_ind] = color
             self.draw_circle(circle)
-
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            exit(0)
         self.root.after(self.delay, self.update)
+
+
+
 
 root = Tk()
 root.state("zoomed")
 TrainingApp(root)
+cv2.destroyAllWindows()
