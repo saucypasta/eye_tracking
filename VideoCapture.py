@@ -15,7 +15,7 @@ class MyVideoCapture:
         if self.vid.isOpened():
             ret, frame = self.vid.read()
             if ret:
-                 # Return a boolean success flag and the current frame converted to BGR
+                # Return a boolean success flag and the current frame converted to BGR
                  return (ret, cv2.flip(frame, 1))
             else:
                  return (ret, None)

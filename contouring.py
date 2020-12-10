@@ -10,11 +10,11 @@ import math
 def distance(x1, y1, x2, y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
-finder = Finder.FeatureFinder()
-videocap = VideoCapture.MyVideoCapture()
+# finder = Finder.FeatureFinder()
+# videocap = VideoCapture.MyVideoCapture()
+#
 
-
-img = cv2.imread("eye.jpg")
+img = cv2.imread("glare.png")
 
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 blur = cv2.GaussianBlur(gray, (7,7), 0)

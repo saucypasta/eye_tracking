@@ -32,7 +32,7 @@ def shape_to_np(shape, dtype="int"):
 
 
 class EyeTracker:
-    def __init__(self, vid, ear_thresh=.19, pupil_thresh=30, blink_consec=1):
+    def __init__(self, vid, ear_thresh=.18, pupil_thresh=30, blink_consec=2):
         self.vid = vid
         self.ear_thresh = ear_thresh
         self.pupil_thresh = pupil_thresh
@@ -152,88 +152,35 @@ class EyeTracker:
             cv2.fillPoly(black_frame , [rightEyeHull], (255, 255, 255))
             mask = black_frame == 255
             w_mask = np.array(255 * (mask == 0)).astype(np.uint8)
-            sclera = self.img * mask
-            pupil = (self.img * mask) + w_mask
+            targetROI = (self.img * mask) + w_mask
+            #
+            # cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
+            # cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
+            # cv2.putText(targetROI, "Blinks: {}".format(TOTAL), (10, 30),
+            #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            # cv2.putText(targetROI, "EAR: {:.2f}".format(leftEAR), (300, 30),
+            #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            # show the frame
+            blur = cv2.GaussianBlur(targetROI, (5,5), 0)
+            # thresh_val = r = cv2.getTrackbarPos('threshold', 'thresh')
+            _, threshold = cv2.threshold(blur, self.pupil_thresh,255, cv2.THRESH_BINARY_INV)
+            contours, heirarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.imwrite("rglare.jpg", targetROI)
+            # if len(contours) != 2:
+            #     print("Too many contours")
+            #     continue
 
-            cv2.putText(frame, "REAR: {:.2f}".format(leftEAR), (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(frame, "LEAR: {:.2f}".format(rightEAR), (300, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-            blur = cv2.GaussianBlur(sclera, (5,5), 0)
-            thresh_val = 200
-            found = False
-            areas = []
-            good_contours = []
-            prev = []
-            for i in range(0, thresh_val):
-                _, threshold = cv2.threshold(blur, thresh_val - i, 255, cv2.THRESH_BINARY)
-                contours, hierarchy = cv2.findContours(threshold,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-                if len(contours) == 6:
-                    cur_area = []
-                    for cnt in contours:
-                        M = cv2.moments(cnt)
-                        if  M["m00"] == 0:
-                            break
-                        cx = int(M["m10"] / M["m00"])
-                        area = cv2.contourArea( cv2.convexHull(cnt))
-                        if(area == 0):
-                            break
-                        M = cv2.moments(cnt)
-                        cx = int(M["m10"] / M["m00"])
-                        cur_area.append((cx, cv2.contourArea(cnt)))
-                    if(len(cur_area) < 6):
-                        continue
-                    cur_area.sort()
-                    if(found == False):
-                        areas = cur_area
-                        found = True
-                        continue
-                    else:
-                        greater = True
-                        for j in range(0,6):
-                            greater = greater & (cur_area[j][1] >= areas[j][1])
-                            if greater == False:
-                                break
-                        if(greater == False):
-                            break
-                        found = True
-                        areas = cur_area
-                        good_contours = contours
-                if(len(contours) != 6 and found):
-                    break
-
-            if(len(good_contours) != 6):
-                print("No 6 whites")
-                cv2.imwrite("white.jpg",blur)
-                return []
-            order = []
-            for cnt in good_contours:
-                M = cv2.moments(cnt)
-                cx = int(M["m10"] / M["m00"])
-                print(len((cx,cnt)))
-                order.append((cx,cnt))
-            order.sort()
-            lp = order[1][1]
-            rp = order[4][1]
-            cv2.fillPoly(pupil, [lp], (10, 10, 10))
-            cv2.fillPoly(pupil, [rp], (10, 10, 10))
-
-            blur = cv2.GaussianBlur(pupil, (7,7), 0)
-            _, threshold = cv2.threshold(blur, self.pupil_thresh, 255, cv2.THRESH_BINARY)
-            contours, hierarchy = cv2.findContours(threshold,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
             centers = []
             eyes = []
             areas = []
             for cnt in contours:
-                hull = cv2.convexHull(cnt)
                 area = cv2.contourArea(cnt)
                 areas.append(area)
-                if(area > 500 or area < 10):
-                    # cv2.drawContours(frame, [hull], -1, (255,0,255), 1)
+                if(area < 20):
+                    # cv2.drawContours(frame, [cnt], -1, (255,0,255), 1)
                     # cv2.imshow('image',frame)
                     continue
-                cv2.drawContours(frame, [hull], -1, (0,0,255), 1)
+                cv2.drawContours(frame, [cnt], -1, (0,0,255), 1)
                 M = cv2.moments(cnt)
                 if M["m00"] == 0:
                     break
@@ -245,7 +192,6 @@ class EyeTracker:
             if len(centers) != 2:
                 self.good_data = False
                 print("Bad center")
-                cv2.imwrite("bad.jpg",pupil)
                 return []
             # first center is right eye (leftmost eye in image)
             left_iris = eyes[1]
@@ -257,50 +203,49 @@ class EyeTracker:
                 left_iris = eyes[0]
                 right_iris = eyes[1]
 
-            ##############SCLERA RATIOS########
-            # rmin_left_dist = 0
-            # rmin_right_dist = 0
-            # first = True
-            # for pt in right_iris:
-            #     (x, y) = pt[0]
-            #     (xl, yl) = self.face_points[self.r_left_corner_ind]
-            #     (xr, yr) = self.face_points[self.r_right_corner_ind]
-            #     ldist = distance(x, y, xl, yl)
-            #     rdist = distance(x, y, xr, yr)
-            #     if(first):
-            #         rmin_left_dist = ldist
-            #         rmin_right_dist = rdist
-            #         first = False
-            #         continue
-            #     if ldist < rmin_left_dist:
-            #         rmin_left_dist = ldist
-            #     if rdist < rmin_right_dist:
-            #         rmin_right_dist = rdist
-            #
-            #
-            # lmin_left_dist = 0
-            # lmin_right_dist = 0
-            # first = True
-            # for pt in left_iris:
-            #     (x, y) = pt[0]
-            #     (xl, yl) = self.face_points[self.l_left_corner_ind]
-            #     (xr, yr) = self.face_points[self.l_right_corner_ind]
-            #     ldist = distance(x, y, xl, yl)
-            #     rdist = distance(x, y, xr, yr)
-            #     if(first):
-            #         lmin_left_dist = ldist
-            #         lmin_right_dist = rdist
-            #         first = False
-            #         continue
-            #     if ldist < lmin_left_dist:
-            #         lmin_left_dist = ldist
-            #     if rdist < lmin_right_dist:
-            #         lmin_right_dist = rdist
-            # self.dists = [rmin_left_dist, rmin_right_dist, lmin_right_dist, lmin_left_dist]
-            ######################################################
+            rmin_left_dist = 0
+            rmin_right_dist = 0
+            first = True
+            for pt in right_iris:
+                (x, y) = pt[0]
+                (xl, yl) = self.face_points[self.r_left_corner_ind]
+                (xr, yr) = self.face_points[self.r_right_corner_ind]
+                ldist = distance(x, y, xl, yl)
+                rdist = distance(x, y, xr, yr)
+                if(first):
+                    rmin_left_dist = ldist
+                    rmin_right_dist = rdist
+                    first = False
+                    continue
+                if ldist < rmin_left_dist:
+                    rmin_left_dist = ldist
+                if rdist < rmin_right_dist:
+                    rmin_right_dist = rdist
+
+
+            lmin_left_dist = 0
+            lmin_right_dist = 0
+            first = True
+            for pt in left_iris:
+                (x, y) = pt[0]
+                (xl, yl) = self.face_points[self.l_left_corner_ind]
+                (xr, yr) = self.face_points[self.l_right_corner_ind]
+                ldist = distance(x, y, xl, yl)
+                rdist = distance(x, y, xr, yr)
+                if(first):
+                    lmin_left_dist = ldist
+                    lmin_right_dist = rdist
+                    first = False
+                    continue
+                if ldist < lmin_left_dist:
+                    lmin_left_dist = ldist
+                if rdist < lmin_right_dist:
+                    lmin_right_dist = rdist
+
+            self.dists = [rmin_left_dist, rmin_right_dist, lmin_right_dist, lmin_left_dist]
             self.centers = centers
 
-            self.data = [self.centers, self.face_points]
+            self.data = [self.centers, self.face_points, self.dists]
             self.good_data = True
             return frame
             # cv2.imshow("image", frame)
