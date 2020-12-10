@@ -8,7 +8,10 @@ import cv2
 import VideoCapture
 import math
 import time
-
+import pyautogui
+import win32api
+from csv import writer
+import Seq
 
 def distance(x1, y1, x2, y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
@@ -32,7 +35,7 @@ def shape_to_np(shape, dtype="int"):
 
 
 class EyeTracker:
-    def __init__(self, vid, ear_thresh=.19, pupil_thresh=30, blink_consec=1):
+    def __init__(self, vid, ear_thresh=.19, pupil_thresh=30, blink_consec=2):
         self.vid = vid
         self.ear_thresh = ear_thresh
         self.pupil_thresh = pupil_thresh
@@ -107,10 +110,13 @@ class EyeTracker:
     def nothing(self, x):
         pass
 
-    def mainloop(self):
+    def mainloop(self,save=False):
         self.good_data = False
         ret, frame = self.vid.get_frame()
         self.img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cursor = pyautogui.position()
+        cursorx = cursor.x
+        cursory = cursor.y
         # cv2.createTrackbar('threshold', 'image', 50, 255, self.nothing)
         if(ret):
             self.gen_face_points()
@@ -133,8 +139,9 @@ class EyeTracker:
                 return []
             else:
                 if self.left_counter >= self.blink_consec:
-                    print("Left Blink")
+                    # print("Left Blink")
                     self.left_blinked = True
+
                 # reset the eye frame counter
                 self.left_counter = 0
 
@@ -144,7 +151,7 @@ class EyeTracker:
                 return []
             else:
                 if self.right_counter >= self.blink_consec:
-                    print("Right blink")
+                    # print("Right blink")
                     self.right_blinked = True
                 # reset the eye frame counter
                 self.right_counter = 0
@@ -246,8 +253,8 @@ class EyeTracker:
                 eyes.append(cnt)
 
             if len(centers) != 2:
-                print("Bad center areas: ",areas)
-                cv2.imwrite("bad.jpg",pupil)
+                # print("Bad center areas: ",areas)
+                # cv2.imwrite("bad.jpg",pupil)
                 return []
             # first center is right eye (leftmost eye in image)
             left_iris = eyes[1]
@@ -303,12 +310,23 @@ class EyeTracker:
             self.centers = centers
             # cv2.circle(frame, tuple(centers[0]), 1, (0, 0, 255), -1)
             # cv2.circle(frame, tuple(centers[1]), 1, (0, 0, 255), -1)
-            self.data = [self.centers, self.face_points]
+            self.data = [self.centers, rightEAR, leftEAR, self.face_points]
             self.good_data = True
-            return [frame,self.data]
-            # cv2.imshow("image", frame)
-            # if cv2.waitKey(1) & 0xFF == ord('q'):
-            #     break
+            # if(save != 0):
+            rowx = [self.centers[0][0]/1919, self.centers[0][1]/1079, self.centers[1][0]/1919, self.centers[1][1]/1079, rightEAR,leftEAR]
+            for (x,y) in self.face_points:
+                rowx.append(x/1919)
+                rowx.append(y/1079)
+            if(save != 0):
+                with open("xtrain.csv", 'a+', newline='') as write_obj:
+                    csv_writer = writer(write_obj)
+                    csv_writer.writerow(rowx)
+                rowy = [cursorx/1919, cursory/1079]
+                with open("ytrain.csv", 'a+', newline='') as write_obj:
+                    csv_writer = writer(write_obj)
+                    csv_writer.writerow(rowy)
+            return [frame, rowx]
+
 
 
 
@@ -319,14 +337,31 @@ cv2.namedWindow('image')
 cv2.createTrackbar('threshold', 'image', 42, 255, nothing)
 vs = VideoCapture.MyVideoCapture()
 et = EyeTracker(vid = vs)
+s = Seq.SEQ()
 while True:
     thresh_val = cv2.getTrackbarPos('threshold', 'image')
     et.pupil_thresh = thresh_val
+    # print(pyautogui.position())
+    save = win32api.GetAsyncKeyState(0x20)
     # start_time = time.time()
-    f = et.mainloop()
+    f = et.mainloop(save)
+    if win32api.GetAsyncKeyState(0x09) and len(f) !=0:
+        p = s.predict(np.array([f[1]]))
+        x = p[0][0] * 1919
+        y = p[0][1] * 1079
+        pyautogui.moveTo(x,y)
+        print("model ",x,y)
+        # print("real ",pyautogui.position().x,pyautogui.position().y)
+    if win32api.GetAsyncKeyState(0x02):
+        s.init_train()
+        print(np.shape(s.x_train))
+        s.train_model()
+        s.save_weights()
+
     if(len(f) != 0):
         cv2.imshow('image', f[0])
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+    time.sleep(.01)
     # print("--- %s seconds ---" % (time.time() - start_time))
 cv2.destroyAllWindows()
