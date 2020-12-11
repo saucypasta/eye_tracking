@@ -352,7 +352,7 @@ while True:
     save = win32api.GetAsyncKeyState(0x20)
     # start_time = time.time()
     f = et.mainloop(save)
-    if win32api.GetAsyncKeyState(0x09) and len(f) !=0:
+    if len(f) !=0:
         print(np.shape(f[1]))
         p = s.predict(np.array([f[1]]))
         x = p[0][0] * 1919

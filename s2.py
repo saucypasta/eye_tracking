@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class SEQ:
-    def __init__(self, weights = "./seq2", x_file="xtrain2.csv", y_file="ytrain2.csv"):
+    def __init__(self, weights = "./seq2", x_file="xtrain.csv", y_file="ytrain.csv"):
         self.x_file = x_file
         self.y_file = y_file
         self.weights = weights
@@ -14,7 +14,7 @@ class SEQ:
         self.y_train = []
         self.init_train()
         self.model = self.init_model()
-        self.load_weights()
+        # self.load_weights()
 
     def init_train(self):
         self.x_train = list(self.x_train)
@@ -38,9 +38,9 @@ class SEQ:
 
     def init_model(self):
         model = Sequential()
-        model.add(Dense(256,input_dim=8,activation='relu'))
-        model.add(Dense(256,activation='relu'))
-        model.add(Dense(256,activation='relu'))
+        model.add(Dense(256,input_dim=142,activation='relu'))
+        model.add(Dense(512,activation='relu'))
+        model.add(Dense(512,activation='relu'))
         model.add(Dense(2,activation='sigmoid'))
         model.compile(loss='MSE')
         return model
@@ -52,10 +52,10 @@ class SEQ:
         self.model.save_weights(self.weights)
 
     def train_model(self):
-        self.model.fit(self.x_train, self.y_train,epochs=1000)
+        self.model.fit(self.x_train, self.y_train, validation_split=.2,batch_size = 20,epochs=1000)
 
     def predict(self, x):
         p = self.model.predict(x)
         return p
 
-# seq = SEQ()
+seq = SEQ()

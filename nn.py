@@ -12,6 +12,7 @@ import pyautogui
 import win32api
 from csv import writer
 import Seq
+pyautogui.FAILSAFE= False
 
 def distance(x1, y1, x2, y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
@@ -313,7 +314,8 @@ class EyeTracker:
             self.data = [self.centers, rightEAR, leftEAR, self.face_points]
             self.good_data = True
             # if(save != 0):
-            rowx = [self.centers[0][0]/1919, self.centers[0][1]/1079, self.centers[1][0]/1919, self.centers[1][1]/1079, rightEAR,leftEAR]
+            # rowx = [self.centers[0][0]/1919, self.centers[0][1]/1079, self.centers[1][0]/1919, self.centers[1][1]/1079, rightEAR,leftEAR]
+            rowx = []
             for (x,y) in self.face_points:
                 rowx.append(x/1919)
                 rowx.append(y/1079)
@@ -346,6 +348,7 @@ while True:
         p = s.predict(np.array([f[1]]))
         x = p[0][0] * 1919
         y = p[0][1] * 1079
+        print(x,y)
         pyautogui.moveTo(x,y)
 
     time.sleep(.01)
